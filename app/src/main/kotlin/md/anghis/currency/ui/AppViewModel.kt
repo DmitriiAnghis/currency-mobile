@@ -42,7 +42,7 @@ data class ConverterState(
             val all = rates?.currencies ?: return POPULAR
             return POPULAR.filter { it in all } + all.filterNot { it in POPULAR }
         }
-    val canConvert: Boolean get() = rates != null && amount.isNotBlank() && from.isNotBlank() && to.isNotBlank()
+    val canConvert: Boolean get() = rates != null && from.isNotBlank() && to.isNotBlank()
     val sourceLine: String?
         get() = rates?.let {
             if (fromCache) "Источник: сохранённый курс BNM от ${it.date.fmt()}"
