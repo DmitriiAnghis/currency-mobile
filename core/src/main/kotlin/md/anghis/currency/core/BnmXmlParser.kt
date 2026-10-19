@@ -26,7 +26,8 @@ object BnmXmlParser {
         val root = try {
             val factory = DocumentBuilderFactory.newInstance().apply {
                 isNamespaceAware = false
-                setFeature("http://apache.org/xml/features/disallow-doctype-decl", true)
+                // Защита от XXE. Парсер Android эту настройку не поддерживает, там DTD и так не загружаются.
+                runCatching { setFeature("http://apache.org/xml/features/disallow-doctype-decl", true) }
             }
             factory.newDocumentBuilder()
                 .parse(ByteArrayInputStream(xml.trim().toByteArray(Charsets.UTF_8)))
