@@ -1,0 +1,65 @@
+# Тесты при каждом push и Pull Request.
+#  - core: логика на чистом Kotlin (Linux и Windows), Android SDK не нужен;
+#  - android: unit-тесты приложения, скриншоты экранов (Robolectric) и сборка APK.
+name: Tests
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  core:
+    name: core · ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    env:
+      SKIP_ANDROID: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Run core tests
+        shell: bash
+        run: ./gradlew :core:test --console=plain
+
+  android:
+    name: app · тесты, скриншоты, APK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Unit tests + screenshots
+        run: ./gradlew :app:testDebugUnitTest --console=plain
+      - name: Build debug APK
+        run: ./gradlew :app:assembleDebug --console=plain
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: screenshots
+          path: docs/screenshots/app/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-debug-apk
+          path: app/build/outputs/apk/debug/*.apk
+      - name: Commit updated screenshots (feature branches only)
+        if: github.event_name == 'push' && github.ref_name != 'main'
+        run: |
+          git add docs/screenshots/app
+          if git diff --cached --quiet; then echo "Screenshots unchanged"; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "docs: обновить скриншоты экранов"
+          git push
