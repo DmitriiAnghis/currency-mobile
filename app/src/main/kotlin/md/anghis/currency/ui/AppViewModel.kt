@@ -43,6 +43,14 @@ data class ConverterState(
             return POPULAR.filter { it in all } + all.filterNot { it in POPULAR }
         }
     val canConvert: Boolean get() = rates != null && from.isNotBlank() && to.isNotBlank()
+    /** Строка в тёмной шапке: какие курсы сейчас загружены. */
+    val headerStatus: String
+        get() {
+            val r = rates ?: return if (loading) "Загрузка курса BNM…" else "Курс не загружен"
+            val count = r.currencies.size
+            val where = if (fromCache) "Сохранённый курс от ${r.date.fmt()}" else "BNM · курс на ${r.date.fmt()}"
+            return "$where · $count ${currencyWord(count)}"
+        }
     val sourceLine: String?
         get() = rates?.let {
             if (fromCache) "Источник: сохранённый курс BNM от ${it.date.fmt()}"
@@ -62,7 +70,23 @@ data class HistoryState(
     val loadedFor: Triple<String, String, LocalDate>? = null,
 )
 
-class AppViewModel(app: Application) : AndroidViewModel(app) {
+/** Действия экрана конвертера: экран зависит от интерфейса, а не от ViewModel (удобно для превью и тестов). */
+interface ConverterActions {
+    fun onAmountChange(value: String)
+    fun onFromChange(code: String)
+    fun onToChange(code: String)
+    fun swap()
+    fun convert()
+    fun refreshRates()
+}
+
+/** Действия экранов «Неделя» и «Месяц». */
+interface HistoryActions {
+    fun onHistoryPair(days: Int, from: String? = null, to: String? = null)
+    fun loadHistory(days: Int, force: Boolean = false)
+}
+
+class AppViewModel(app: Application) : AndroidViewModel(app), ConverterActions, HistoryActions {
     private val repository = RatesRepository(BnmHttpSource(), FileRateCache(app.filesDir))
 
     private val _converter = MutableStateFlow(ConverterState())
@@ -78,7 +102,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         refreshRates()
     }
 
-    fun refreshRates() {
+    override fun refreshRates() {
         _converter.update { it.copy(loading = true, error = null) }
         viewModelScope.launch {
             try {
@@ -93,39 +117,30 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun onAmountChange(value: String) = _converter.update { it.copy(amount = value, inputError = null, result = null) }
-    fun onFromChange(code: String) = _converter.update { it.copy(from = code, result = null) }
-    fun onToChange(code: String) = _converter.update { it.copy(to = code, result = null) }
-    fun swap() = _converter.update { it.copy(from = it.to, to = it.from, result = null) }
+    override fun onAmountChange(value: String) = _converter.update { it.copy(amount = value, inputError = null, result = null) }
+    override fun onFromChange(code: String) = _converter.update { it.copy(from = code, result = null) }
+    override fun onToChange(code: String) = _converter.update { it.copy(to = code, result = null) }
+    override fun swap() = _converter.update { it.copy(from = it.to, to = it.from, result = null) }
 
-    fun convert() {
+    override fun convert() {
         val state = _converter.value
         val rates = state.rates ?: return
         when (val parsed = AmountValidator.validate(state.amount)) {
             is AmountResult.Invalid -> _converter.update { it.copy(inputError = parsed.message, result = null) }
-            is AmountResult.Valid -> {
-                val value = Converter.convert(parsed.amount, state.from, state.to, rates)
-                val rate = Converter.rate(state.from, state.to, rates)
-                val reverse = Converter.rate(state.to, state.from, rates)
-                _converter.update {
-                    it.copy(
-                        inputError = null,
-                        result = "${parsed.amount.plain()} ${state.from} = ${value.plain()} ${state.to}\n" +
-                            "1 ${state.from} = ${rate.short()} ${state.to} · 1 ${state.to} = ${reverse.short()} ${state.from}",
-                    )
-                }
+            is AmountResult.Valid -> _converter.update {
+                it.copy(inputError = null, result = formatResult(parsed.amount, state.from, state.to, rates))
             }
         }
     }
 
     private fun flowFor(days: Int) = if (days == 7) _week else _month
 
-    fun onHistoryPair(days: Int, from: String? = null, to: String? = null) {
+    override fun onHistoryPair(days: Int, from: String?, to: String?) {
         flowFor(days).update { it.copy(from = from ?: it.from, to = to ?: it.to) }
         loadHistory(days, force = true)
     }
 
-    fun loadHistory(days: Int, force: Boolean = false) {
+    override fun loadHistory(days: Int, force: Boolean) {
         val flow = flowFor(days)
         val current = flow.value
         val today = LocalDate.now()
@@ -148,6 +163,27 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 flow.update { it.copy(loading = false, error = "Не удалось загрузить историю: ${e.message}") }
             }
         }
+    }
+}
+
+/** Текст результата: первая строка — сумма, вторая — прямой и обратный курс. */
+fun formatResult(amount: BigDecimal, from: String, to: String, rates: DailyRates): String {
+    val value = Converter.convert(amount, from, to, rates)
+    val rate = Converter.rate(from, to, rates)
+    val reverse = Converter.rate(to, from, rates)
+    return "${amount.plain()} $from = ${value.plain()} $to\n" +
+        "1 $from = ${rate.short()} $to · 1 $to = ${reverse.short()} $from"
+}
+
+/** «1 валюта», «2 валюты», «5 валют». */
+fun currencyWord(n: Int): String {
+    val mod100 = n % 100
+    val mod10 = n % 10
+    return when {
+        mod100 in 11..14 -> "валют"
+        mod10 == 1 -> "валюта"
+        mod10 in 2..4 -> "валюты"
+        else -> "валют"
     }
 }
 

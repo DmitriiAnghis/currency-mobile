@@ -31,6 +31,17 @@ android {
     buildFeatures {
         compose = true
     }
+    testOptions {
+        unitTests {
+            // Robolectric нужны ресурсы приложения, чтобы отрисовать экраны в JVM-тестах.
+            isIncludeAndroidResources = true
+            all {
+                // Скриншоты экранов (ScreenshotTest) сохраняются в docs/screenshots/app при каждом прогоне.
+                it.systemProperty("roborazzi.test.record", "true")
+                it.testLogging { events("passed", "failed") }
+            }
+        }
+    }
 }
 
 dependencies {
@@ -45,4 +56,13 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(libs.kotlinx.coroutines.android)
     debugImplementation(libs.androidx.compose.ui.tooling)
+    debugImplementation(libs.androidx.compose.ui.test.manifest)
+
+    testImplementation(libs.junit)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.roborazzi)
+    testImplementation(libs.roborazzi.compose)
+    testImplementation(libs.androidx.test.ext.junit)
+    testImplementation(platform(libs.androidx.compose.bom))
+    testImplementation(libs.androidx.compose.ui.test.junit4)
 }
