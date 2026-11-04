@@ -21,6 +21,11 @@ import java.math.BigDecimal
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34], qualifiers = "w400dp-h860dp-xhdpi")
 class ScreenshotTest {
+    private companion object {
+        /** Экраны сравнения длиннее: высота побольше, чтобы влезла вся статистика. */
+        const val TALL = "w400dp-h1180dp-xhdpi"
+    }
+
     @get:Rule
     val compose = createComposeRule()
 
@@ -74,12 +79,15 @@ class ScreenshotTest {
     )
 
     @Test
+    @Config(qualifiers = TALL)
     fun week() = shot("06_week", tab = 1)
 
     @Test
+    @Config(qualifiers = TALL)
     fun month() = shot("07_month", tab = 2)
 
     @Test
+    @Config(qualifiers = TALL)
     fun weekOffline() = shot(
         "08_week_offline",
         week = DemoData.history(7, notice = "Нет сети: показаны сохранённые данные, последние от 04.11.2026"),

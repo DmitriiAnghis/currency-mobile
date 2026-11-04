@@ -28,6 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
 @Composable
 fun ConverterScreen(state: ConverterState, actions: ConverterActions) {
@@ -56,7 +57,9 @@ fun ConverterScreen(state: ConverterState, actions: ConverterActions) {
             )
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 CurrencyPicker("Из", state.from, state.currencies, actions::onFromChange, Modifier.weight(1f))
-                FilledTonalButton(onClick = actions::swap, shape = RoundedCornerShape(10.dp)) { Text("⇄") }
+                FilledTonalButton(onClick = actions::swap, shape = RoundedCornerShape(10.dp)) {
+                    Text("⇄", fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                }
                 CurrencyPicker("В", state.to, state.currencies, actions::onToChange, Modifier.weight(1f))
             }
             Button(
