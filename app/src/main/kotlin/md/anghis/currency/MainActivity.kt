@@ -21,7 +21,8 @@ class MainActivity : ComponentActivity() {
                 val converter by vm.converter.collectAsStateWithLifecycle()
                 val week by vm.week.collectAsStateWithLifecycle()
                 val month by vm.month.collectAsStateWithLifecycle()
-                CurrencyApp(converter, week, month, vm, vm)
+                val journal by vm.journal.collectAsStateWithLifecycle()
+                CurrencyApp(converter, week, month, journal, vm, vm, vm)
             }
         }
     }

@@ -28,14 +28,14 @@ class ConverterStateTest {
     @Test
     fun `шапка показывает источник, дату и число валют`() {
         val state = ConverterState(loading = false, rates = DemoData.rates)
-        assertEquals("BNM · курс на 04.11.2026 · 8 валют", state.headerStatus)
-        assertEquals("Сохранённый курс от 04.11.2026 · 8 валют", state.copy(fromCache = true).headerStatus)
+        assertEquals("BNM · курс на 04.11.2026 · 9 валют", state.headerStatus)
+        assertEquals("Сохранённый курс от 04.11.2026 · 9 валют", state.copy(fromCache = true).headerStatus)
     }
 
     @Test
     fun `популярные валюты идут первыми`() {
         val state = ConverterState(rates = DemoData.rates)
-        assertEquals(listOf("MDL", "EUR", "USD", "RON", "UAH", "RUB", "GBP", "CHF"), state.currencies)
+        assertEquals(listOf("MDL", "EUR", "USD", "RON", "UAH", "RUB", "GBP", "CHF", "HUF"), state.currencies)
     }
 
     @Test
@@ -50,5 +50,31 @@ class ConverterStateTest {
         val lines = text.lines()
         assertEquals("100 EUR = 1960.12 MDL", lines[0])
         assertTrue(lines[1].startsWith("1 EUR = 19.6012 MDL · 1 MDL = 0.051"))
+    }
+
+    @Test
+    fun `слово запись согласуется с числом`() {
+        assertEquals("запись", recordWord(1))
+        assertEquals("записи", recordWord(2))
+        assertEquals("записей", recordWord(5))
+        assertEquals("записей", recordWord(12))
+        assertEquals("запись", recordWord(101))
+    }
+
+    @Test
+    fun `подпись журнала - пусто, всё и найдено`() {
+        assertEquals("Пока пусто. Каждая конвертация сохраняется сюда.", JournalState().caption)
+        val journal = DemoData.journal()
+        assertEquals("7 записей, новые сверху", journal.caption)
+        val found = journal.copy(query = "usd")
+        assertEquals(3, found.shown.size)
+        assertEquals("Найдено 3 из 7", found.caption)
+    }
+
+    @Test
+    fun `журнал помечает конвертации по сохранённому курсу`() {
+        val journal = DemoData.journal()
+        assertEquals(2, journal.entries.count { it.fromCache })
+        assertEquals("250 EUR = 4900.30 MDL", journal.entries.first().text)
     }
 }

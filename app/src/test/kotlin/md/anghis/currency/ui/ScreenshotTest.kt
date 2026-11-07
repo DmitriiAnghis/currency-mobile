@@ -36,10 +36,15 @@ class ScreenshotTest {
         converter: ConverterState = ready,
         week: HistoryState = DemoData.history(7),
         month: HistoryState = DemoData.history(30),
-        tab: Int = 0,
+        journal: JournalState = DemoData.journal(),
+        tab: Int = TAB_CONVERTER,
+        ratesQuery: String = "",
     ) {
         compose.setContent {
-            AppTheme { CurrencyApp(converter, week, month, NoActions, NoActions, initialTab = tab) }
+            AppTheme {
+                CurrencyApp(converter, week, month, journal, NoActions, NoActions, NoActions,
+                    initialTab = tab, initialRatesQuery = ratesQuery)
+            }
         }
         java.io.File("../docs/screenshots/app").mkdirs()
         compose.onRoot().captureRoboImage("../docs/screenshots/app/$name.png")
@@ -80,17 +85,47 @@ class ScreenshotTest {
 
     @Test
     @Config(qualifiers = TALL)
-    fun week() = shot("06_week", tab = 1)
+    fun week() = shot("06_week", tab = TAB_WEEK)
 
     @Test
     @Config(qualifiers = TALL)
-    fun month() = shot("07_month", tab = 2)
+    fun month() = shot("07_month", tab = TAB_MONTH)
 
     @Test
     @Config(qualifiers = TALL)
     fun weekOffline() = shot(
         "08_week_offline",
         week = DemoData.history(7, notice = "Нет сети: показаны сохранённые данные, последние от 04.11.2026"),
-        tab = 1,
+        tab = TAB_WEEK,
     )
+
+    @Test
+    @Config(qualifiers = TALL)
+    fun rates() = shot("09_rates", tab = TAB_RATES)
+
+    @Test
+    fun ratesSearch() = shot("10_rates_search", tab = TAB_RATES, ratesQuery = "leu")
+
+    @Test
+    @Config(qualifiers = TALL)
+    fun journal() = shot("11_journal", tab = TAB_JOURNAL)
+
+    @Test
+    fun journalSearch() = shot("12_journal_search", journal = DemoData.journal().copy(query = "eur"), tab = TAB_JOURNAL)
+
+    @Test
+    fun journalDeleted() {
+        val j = DemoData.journal()
+        val removed = j.entries[1]
+        shot("13_journal_deleted",
+            journal = j.copy(entries = j.entries - removed, message = "Удалено: ${removed.text}", undo = removed),
+            tab = TAB_JOURNAL)
+    }
+
+    @Test
+    fun journalClearConfirm() = shot("14_journal_clear", journal = DemoData.journal().copy(confirmClear = true),
+        tab = TAB_JOURNAL)
+
+    @Test
+    fun journalEmpty() = shot("15_journal_empty", journal = JournalState(), tab = TAB_JOURNAL)
 }

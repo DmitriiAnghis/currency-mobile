@@ -4,13 +4,13 @@
 
 **Лабораторная работа 4 по PSI** · Dmitrii Anghis, группа TI-235 · УТМ, 2026
 
-Android-приложение на **Kotlin + Jetpack Compose**: конвертер валют по официальному курсу **Национального банка Молдовы** и сравнение курса за неделю и за месяц с графиком и статистикой.
+Android-приложение на **Kotlin + Jetpack Compose**: конвертер валют по официальному курсу **Национального банка Молдовы**, таблица всех курсов, сравнение курса за неделю и за месяц с графиком и статистикой, журнал конвертаций с экспортом в CSV.
 
 [![Tests](https://github.com/DmitriiAnghis/currency-mobile/actions/workflows/tests.yml/badge.svg)](https://github.com/DmitriiAnghis/currency-mobile/actions/workflows/tests.yml)
 ![Kotlin](https://img.shields.io/badge/Kotlin-2.0-7F52FF?logo=kotlin&logoColor=white)
 ![Android](https://img.shields.io/badge/Android-8.0%2B-3DDC84?logo=android&logoColor=white)
 ![Compose](https://img.shields.io/badge/UI-Jetpack%20Compose-4285F4?logo=jetpackcompose&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-47%20passed-2ea44f)
+![Tests](https://img.shields.io/badge/tests-71%20passed-2ea44f)
 
 <img src="docs/screenshots/app/01_converter.png" width="300" alt="Конвертер EUR → MDL">
 
@@ -29,6 +29,9 @@ Android-приложение на **Kotlin + Jetpack Compose**: конверте
 - **Работа без сети**: каждый ответ BNM сохраняется в файл во внутренней памяти. Без сети приложение показывает последний сохранённый курс и честно пишет, от какой он даты.
 - **Выходные и праздники**: если на сегодня курса нет, берётся последний опубликованный, с пояснением.
 - **Проверка ввода**: запятая или точка, отказ на пустое, ноль, минус и буквы.
+- **Таблица курсов**: все валюты BNM на дату, поиск, нажатие открывает валюту в конвертере.
+- **Журнал конвертаций**: сохраняется после перезапуска, поиск, повтор, удаление с возвратом, очистка с подтверждением.
+- **Экспорт в CSV** журнала и курсов через «Поделиться» (почта, мессенджер, Диск), файл открывается в Excel. Результат можно скопировать.
 
 ## 🚀 Быстрый старт
 
@@ -49,13 +52,15 @@ SKIP_ANDROID=1 ./gradlew :core:test          # только логика, без
 
 ## 🪟 Интерфейс
 
-Всё в **одном окне с тремя вкладками** внизу, без всплывающих окон:
+Всё в **одном окне с пятью вкладками** внизу, без всплывающих окон:
 
 | Вкладка | Что делает |
 |---|---|
-| **⇄ Конвертер** | Сумма, валюты «Из» и «В», кнопка **⇄** меняет их местами. **Конвертировать** (или **Готово** на клавиатуре) показывает результат в карточке: сумма, прямой и обратный курс, плашка источника (зелёная «Курс BNM» или оранжевая «Сохранённый курс») и дата. |
+| **⇄ Конвертер** | Сумма, валюты «Из» и «В», кнопка **⇄** меняет их местами. **Конвертировать** (или **Готово** на клавиатуре) показывает результат в карточке: сумма, прямой и обратный курс, плашка источника (зелёная «Курс BNM» или оранжевая «Сохранённый курс») и дата. **Копировать** кладёт результат в буфер обмена. Каждая конвертация попадает в журнал. |
+| **≡ Курсы** | Все официальные курсы на дату: код, название, номинал, MDL за 1 единицу. Поиск по коду и названию. Нажатие на строку открывает конвертер с этой валютой. **Поделиться CSV** отправляет таблицу. |
 | **7 Неделя** | Пара валют, график за 7 дней, плитки «Минимум», «Максимум», «Среднее», «Изменение» и плашка тенденции. |
 | **30 Месяц** | То же за 30 дней. |
+| **☰ Журнал** | Все конвертации, новые сверху, число записей на вкладке. Поиск по валюте, сумме и дате. **Повторить** заново считает запись по текущему курсу, **Удалить** убирает её (в полосе есть **Вернуть**), **Очистить всё** спрашивает подтверждение в полосе. **Поделиться CSV** отправляет то, что видно в списке. |
 
 - В **тёмной шапке** видно, какие курсы сейчас загружены: источник, дата и число валют.
 - Ошибка ввода показывается красным прямо под полем «Сумма».
@@ -75,7 +80,17 @@ SKIP_ANDROID=1 ./gradlew :core:test          # только логика, без
 <tr>
 <td align="center"><img src="docs/screenshots/app/07_month.png" width="240"><br>Сравнение за месяц</td>
 <td align="center"><img src="docs/screenshots/app/08_week_offline.png" width="240"><br>Неделя без сети</td>
-<td></td>
+<td align="center"><img src="docs/screenshots/app/09_rates.png" width="240"><br>Все курсы BNM</td>
+</tr>
+<tr>
+<td align="center"><img src="docs/screenshots/app/10_rates_search.png" width="240"><br>Поиск по курсам</td>
+<td align="center"><img src="docs/screenshots/app/11_journal.png" width="240"><br>Журнал конвертаций</td>
+<td align="center"><img src="docs/screenshots/app/12_journal_search.png" width="240"><br>Поиск по журналу</td>
+</tr>
+<tr>
+<td align="center"><img src="docs/screenshots/app/13_journal_deleted.png" width="240"><br>Удаление с «Вернуть»</td>
+<td align="center"><img src="docs/screenshots/app/14_journal_clear.png" width="240"><br>Очистка: подтверждение в полосе</td>
+<td align="center"><img src="docs/screenshots/app/15_journal_empty.png" width="240"><br>Пустой журнал</td>
 </tr>
 </table>
 
@@ -85,8 +100,8 @@ SKIP_ANDROID=1 ./gradlew :core:test          # только логика, без
 
 | Модуль | Что проверяется | Тестов |
 |---|---|---|
-| `core` | разбор XML BNM, конвертация и кросс-курсы, проверка суммы, статистика, кэш, выходные, работа без сети | 33 |
-| `app` | строка в шапке, порядок валют, текст результата, отрисовка 8 экранов | 14 |
+| `core` | разбор XML BNM, конвертация и кросс-курсы, проверка суммы, статистика, кэш, выходные, работа без сети, журнал (сохранение, повреждённый файл, удаление и возврат, лимит, поиск, CSV), таблица курсов | 46 |
+| `app` | строка в шапке, порядок валют, текст результата, подписи журнала, отрисовка 15 экранов | 25 |
 
 Тесты запускаются в **GitHub Actions** при каждом push и Pull Request: `core` на Linux и Windows, `app` на Linux вместе со сборкой APK. Результат во вкладке **Actions**, значок вверху README зелёный, когда всё прошло.
 
@@ -94,10 +109,13 @@ SKIP_ANDROID=1 ./gradlew :core:test          # только логика, без
 
 ```
 core/   чистый Kotlin без Android: Model, BnmXmlParser, Converter, AmountValidator,
-        Statistics, RatesRepository (кэш, история, работа без сети) + unit-тесты
+        Statistics, RatesRepository (кэш, история, работа без сети),
+        ConversionLog (журнал и CSV), RatesTable (таблица курсов) + unit-тесты
 app/    Android-приложение
-  data/ BnmHttpSource (HTTP к bnm.md), FileRateCache (файлы rates/ГГГГ-ММ-ДД.xml)
-  ui/   AppViewModel, CurrencyApp (шапка и вкладки), ConverterScreen, ComparisonScreen,
+  data/ BnmHttpSource (HTTP к bnm.md), FileRateCache (файлы rates/ГГГГ-ММ-ДД.xml),
+        FileLogStorage (журнал history.txt), CsvShare (CSV через «Поделиться»)
+  ui/   AppViewModel, CurrencyApp (шапка и вкладки), ConverterScreen, RatesScreen,
+        ComparisonScreen, JournalScreen,
         Components (карточки, полосы-сообщения, выбор валюты), Theme (палитра)
 docs/screenshots/app/   скриншоты экранов из ScreenshotTest
 REPORT.md               отчёт по лабораторной
@@ -106,7 +124,7 @@ REPORT.md               отчёт по лабораторной
 ## 🌿 Работа с Git
 
 - Работа шла по веткам: `feature/core-logic` → `feature/android-ui` → `docs/report`, каждая попала в `main` через Pull Request.
-- Оформление интерфейса, скриншоты и Actions добавлены отдельным Pull Request.
+- Оформление интерфейса, скриншоты и Actions добавлены отдельным Pull Request, курсы, журнал и экспорт — следующим.
 - История видна во вкладке **Pull requests → Closed**.
 
 ## 📬 Уведомления о коммитах на почту

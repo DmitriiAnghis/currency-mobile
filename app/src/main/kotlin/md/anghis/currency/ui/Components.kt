@@ -84,6 +84,8 @@ fun Banner(
     kind: BannerKind = BannerKind.WARN,
     actionLabel: String? = null,
     onAction: (() -> Unit)? = null,
+    secondLabel: String? = null,
+    onSecond: (() -> Unit)? = null,
 ) {
     val shape = RoundedCornerShape(10.dp)
     Row(
@@ -98,6 +100,9 @@ fun Banner(
             modifier = Modifier.weight(1f).padding(vertical = 12.dp))
         if (actionLabel != null && onAction != null) {
             TextButton(onClick = onAction) { Text(actionLabel, color = kind.fg, fontWeight = FontWeight.SemiBold) }
+        }
+        if (secondLabel != null && onSecond != null) {
+            TextButton(onClick = onSecond) { Text(secondLabel, color = Palette.muted) }
         }
     }
 }

@@ -10,8 +10,10 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import md.anghis.currency.core.AmountResult
 import md.anghis.currency.core.AmountValidator
+import md.anghis.currency.core.ConversionLog
 import md.anghis.currency.core.Converter
 import md.anghis.currency.core.DailyRates
+import md.anghis.currency.core.LogEntry
 import md.anghis.currency.core.PeriodStats
 import md.anghis.currency.core.RatePoint
 import md.anghis.currency.core.RatesException
@@ -19,6 +21,7 @@ import md.anghis.currency.core.RatesRepository
 import md.anghis.currency.core.Statistics
 import md.anghis.currency.core.fmt
 import md.anghis.currency.data.BnmHttpSource
+import md.anghis.currency.data.FileLogStorage
 import md.anghis.currency.data.FileRateCache
 import java.math.BigDecimal
 import java.time.LocalDate
@@ -70,6 +73,24 @@ data class HistoryState(
     val loadedFor: Triple<String, String, LocalDate>? = null,
 )
 
+/** Журнал конвертаций: записи, строка поиска, ждём ли подтверждения очистки, сообщение в полосе. */
+data class JournalState(
+    val entries: List<LogEntry> = emptyList(),
+    val query: String = "",
+    val confirmClear: Boolean = false,
+    val message: String? = null,
+    /** Последняя удалённая запись: её можно вернуть кнопкой в полосе. */
+    val undo: LogEntry? = null,
+) {
+    val shown: List<LogEntry> get() = entries.filter { it.matches(query) }
+    val caption: String
+        get() = when {
+            entries.isEmpty() -> "Пока пусто. Каждая конвертация сохраняется сюда."
+            shown.size != entries.size -> "Найдено ${shown.size} из ${entries.size}"
+            else -> "${entries.size} ${recordWord(entries.size)}, новые сверху"
+        }
+}
+
 /** Действия экрана конвертера: экран зависит от интерфейса, а не от ViewModel (удобно для превью и тестов). */
 interface ConverterActions {
     fun onAmountChange(value: String)
@@ -80,14 +101,36 @@ interface ConverterActions {
     fun refreshRates()
 }
 
+/** Действия вкладок «Курсы» и «Журнал». */
+interface JournalActions {
+    fun useCurrency(code: String)
+    fun onJournalQuery(value: String)
+    fun repeat(id: Long)
+    fun delete(id: Long)
+    fun undoDelete()
+    fun askClear()
+    fun cancelClear()
+    fun confirmClear()
+    fun dismissMessage()
+}
+
 /** Действия экранов «Неделя» и «Месяц». */
 interface HistoryActions {
     fun onHistoryPair(days: Int, from: String? = null, to: String? = null)
     fun loadHistory(days: Int, force: Boolean = false)
 }
 
-class AppViewModel(app: Application) : AndroidViewModel(app), ConverterActions, HistoryActions {
+class AppViewModel(app: Application) : AndroidViewModel(app), ConverterActions, HistoryActions, JournalActions {
     private val repository = RatesRepository(BnmHttpSource(), FileRateCache(app.filesDir))
+    private val log = ConversionLog(FileLogStorage(app.filesDir))
+
+    private val _journal = MutableStateFlow(
+        JournalState(
+            entries = log.entries,
+            message = if (log.skippedLines > 0) "Журнал был повреждён: пропущено строк: ${log.skippedLines}" else null,
+        ),
+    )
+    val journal: StateFlow<JournalState> = _journal.asStateFlow()
 
     private val _converter = MutableStateFlow(ConverterState())
     val converter: StateFlow<ConverterState> = _converter.asStateFlow()
@@ -127,11 +170,59 @@ class AppViewModel(app: Application) : AndroidViewModel(app), ConverterActions, 
         val rates = state.rates ?: return
         when (val parsed = AmountValidator.validate(state.amount)) {
             is AmountResult.Invalid -> _converter.update { it.copy(inputError = parsed.message, result = null) }
-            is AmountResult.Valid -> _converter.update {
-                it.copy(inputError = null, result = formatResult(parsed.amount, state.from, state.to, rates))
+            is AmountResult.Valid -> {
+                _converter.update {
+                    it.copy(inputError = null, result = formatResult(parsed.amount, state.from, state.to, rates))
+                }
+                runCatching {
+                    log.add(parsed.amount, state.from, state.to,
+                        Converter.convert(parsed.amount, state.from, state.to, rates), rates.date, state.fromCache)
+                }
+                _journal.update { it.copy(entries = log.entries) }
             }
         }
     }
+
+    override fun useCurrency(code: String) = _converter.update {
+        it.copy(from = code, to = if (code == "MDL") "EUR" else "MDL", result = null, inputError = null)
+    }
+
+    override fun onJournalQuery(value: String) = _journal.update { it.copy(query = value) }
+
+    override fun repeat(id: Long) {
+        val entry = log.get(id) ?: return
+        _converter.update {
+            it.copy(amount = entry.amount.plain(), from = entry.from, to = entry.to, inputError = null, result = null)
+        }
+        convert()
+    }
+
+    override fun delete(id: Long) {
+        val entry = log.get(id) ?: return
+        log.delete(id)
+        _journal.update {
+            it.copy(entries = log.entries, message = "Удалено: ${entry.text}", undo = entry, confirmClear = false)
+        }
+    }
+
+    override fun undoDelete() {
+        val entry = _journal.value.undo ?: return
+        log.restore(entry)
+        _journal.update { it.copy(entries = log.entries, message = null, undo = null) }
+    }
+
+    override fun askClear() = _journal.update { it.copy(confirmClear = it.entries.isNotEmpty(), message = null, undo = null) }
+    override fun cancelClear() = _journal.update { it.copy(confirmClear = false) }
+
+    override fun confirmClear() {
+        val count = log.clear()
+        _journal.update {
+            it.copy(entries = log.entries, confirmClear = false, undo = null,
+                message = "Журнал очищен: удалено $count ${recordWord(count)}")
+        }
+    }
+
+    override fun dismissMessage() = _journal.update { it.copy(message = null, undo = null) }
 
     private fun flowFor(days: Int) = if (days == 7) _week else _month
 
@@ -184,6 +275,18 @@ fun currencyWord(n: Int): String {
         mod10 == 1 -> "валюта"
         mod10 in 2..4 -> "валюты"
         else -> "валют"
+    }
+}
+
+/** «1 запись», «2 записи», «5 записей». */
+fun recordWord(n: Int): String {
+    val mod100 = n % 100
+    val mod10 = n % 10
+    return when {
+        mod100 in 11..14 -> "записей"
+        mod10 == 1 -> "запись"
+        mod10 in 2..4 -> "записи"
+        else -> "записей"
     }
 }
 

@@ -22,6 +22,12 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -32,6 +38,8 @@ import androidx.compose.ui.unit.sp
 
 @Composable
 fun ConverterScreen(state: ConverterState, actions: ConverterActions) {
+    val clipboard = LocalClipboardManager.current
+    var copied by remember(state.result) { mutableStateOf(false) }
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -40,6 +48,9 @@ fun ConverterScreen(state: ConverterState, actions: ConverterActions) {
             Banner(it, BannerKind.ERROR, actionLabel = "Повторить", onAction = actions::refreshRates)
         }
         state.notice?.let { Banner(it, BannerKind.WARN) }
+        if (copied) {
+            Banner("Результат скопирован в буфер обмена", BannerKind.OK, actionLabel = "✕", onAction = { copied = false })
+        }
 
         SectionCard(title = "Конвертер валют") {
             OutlinedTextField(
@@ -89,6 +100,16 @@ fun ConverterScreen(state: ConverterState, actions: ConverterActions) {
                     color = Palette.text)
                 lines.drop(1).forEach { Text(it, color = Palette.muted, style = MaterialTheme.typography.bodyMedium) }
                 SourceBadge(state)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilledTonalButton(onClick = {
+                        clipboard.setText(AnnotatedString(listOfNotNull(result, state.sourceLine).joinToString("\n")))
+                        copied = true
+                    }, shape = RoundedCornerShape(10.dp)) {
+                        Text("Копировать", fontWeight = FontWeight.SemiBold)
+                    }
+                }
+                Text("Конвертация сохранена во вкладке «Журнал».", color = Palette.muted,
+                    style = MaterialTheme.typography.bodySmall)
             }
         } else if (state.rates != null) {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
