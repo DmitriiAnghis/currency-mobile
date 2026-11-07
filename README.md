@@ -10,7 +10,7 @@ Android-приложение на **Kotlin + Jetpack Compose**: конверте
 ![Kotlin](https://img.shields.io/badge/Kotlin-2.0-7F52FF?logo=kotlin&logoColor=white)
 ![Android](https://img.shields.io/badge/Android-8.0%2B-3DDC84?logo=android&logoColor=white)
 ![Compose](https://img.shields.io/badge/UI-Jetpack%20Compose-4285F4?logo=jetpackcompose&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-71%20passed-2ea44f)
+![Tests](https://img.shields.io/badge/tests-70%20passed-2ea44f)
 
 <img src="docs/screenshots/app/01_converter.png" width="300" alt="Конвертер EUR → MDL">
 
@@ -101,7 +101,7 @@ SKIP_ANDROID=1 ./gradlew :core:test          # только логика, без
 | Модуль | Что проверяется | Тестов |
 |---|---|---|
 | `core` | разбор XML BNM, конвертация и кросс-курсы, проверка суммы, статистика, кэш, выходные, работа без сети, журнал (сохранение, повреждённый файл, удаление и возврат, лимит, поиск, CSV), таблица курсов | 46 |
-| `app` | строка в шапке, порядок валют, текст результата, подписи журнала, отрисовка 15 экранов | 25 |
+| `app` | строка в шапке, порядок валют, текст результата, подписи журнала, отрисовка 15 экранов | 24 |
 
 Тесты запускаются в **GitHub Actions** при каждом push и Pull Request: `core` на Linux и Windows, `app` на Linux вместе со сборкой APK. Результат во вкладке **Actions**, значок вверху README зелёный, когда всё прошло.
 
